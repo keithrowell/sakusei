@@ -6,7 +6,10 @@ module Sakusei
   # Processes Vue components at build time
   # Requires Node.js with @vue/server-renderer installed
   class VueProcessor
-    VUE_COMPONENT_PATTERN = /<vue-component\s+name="([^"]+)"(?:\s*\/>|>(.*?)<\/vue-component>)/m
+    # Pattern to match vue-component tags with optional props
+    # Supports: <vue-component name="Comp" title="foo" />
+    # Or: <vue-component name="Comp" title="foo">slot content</vue-component>
+    VUE_COMPONENT_PATTERN = /<vue-component\s+([^>]+)(?:\s*\/>|>(.*?)<\/vue-component>)/m
 
     INSTALL_INSTRUCTIONS = <<~MSG
       Vue components detected but dependencies not found.
@@ -35,10 +38,14 @@ module Sakusei
       end
 
       @content.gsub(VUE_COMPONENT_PATTERN) do |match|
-        component_name = Regexp.last_match(1)
+        attrs_string = Regexp.last_match(1)
         slot_content = Regexp.last_match(2)
 
-        render_component(component_name, slot_content)
+        # Parse attributes
+        attrs = parse_attributes(attrs_string)
+        component_name = attrs.delete('name')
+
+        render_component(component_name, slot_content, attrs)
       end
     end
 
@@ -63,7 +70,7 @@ module Sakusei
       system(check_cmd)
     end
 
-    def render_component(name, slot_content = nil)
+    def render_component(name, slot_content = nil, props = {})
       component_file = find_component_file(name)
 
       unless component_file
@@ -79,7 +86,8 @@ module Sakusei
         'node',
         vue_renderer_script,
         component_file,
-        escape_slot_content(html_content)
+        escape_slot_content(html_content),
+        escape_props(props)
       ].join(' ')
 
       # Capture stdout only (stderr goes to console for debugging)
@@ -113,6 +121,29 @@ module Sakusei
       # Base64 encode to safely pass through shell
       require 'base64'
       Base64.strict_encode64(content.strip)
+    end
+
+    # Parse HTML-style attributes from a string
+    # e.g., name="InfoCard" title="My Title" → { 'name' => 'InfoCard', 'title' => 'My Title' }
+    def parse_attributes(attrs_string)
+      attrs = {}
+      return attrs if attrs_string.nil? || attrs_string.empty?
+
+      # Match name="value" or name='value' patterns
+      attrs_string.scan(/(\w+)=["']([^"']*)["']/) do |key, value|
+        attrs[key] = value
+      end
+
+      attrs
+    end
+
+    # Escape props hash for passing to shell script
+    def escape_props(props)
+      return '' if props.nil? || props.empty?
+
+      require 'json'
+      require 'base64'
+      Base64.strict_encode64(props.to_json)
     end
 
     # Convert markdown to HTML so it renders properly inside Vue component slots
