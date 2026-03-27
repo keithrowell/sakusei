@@ -4,6 +4,19 @@ require 'thor'
 
 module Sakusei
   class CLI < Thor
+    desc 'preview [STYLE]', 'Generate a preview PDF showing all style elements'
+    option :output, aliases: '-o', default: 'style-preview.pdf', desc: 'Output PDF file path'
+    option :config, aliases: '-c', desc: 'Path to md-to-pdf config file'
+    option :stylesheet, aliases: '-css', desc: 'Path to CSS stylesheet'
+    def preview(style = nil)
+      preview = StylePreview.new(style, options)
+      output_path = preview.generate
+      say "Style preview generated: #{output_path}", :green
+    rescue Error => e
+      say_error e.message
+      exit 1
+    end
+
     desc 'build FILES', 'Build PDF from markdown FILE(s). Accepts multiple files, globs, or directories.'
     option :output, aliases: '-o', desc: 'Output PDF file path'
     option :style, aliases: '-s', desc: 'Style pack name to use'

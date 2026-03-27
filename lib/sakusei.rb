@@ -13,6 +13,7 @@ require_relative 'sakusei/erb_processor'
 require_relative 'sakusei/md_to_pdf_converter'
 require_relative 'sakusei/pdf_concat'
 require_relative 'sakusei/multi_file_builder'
+require_relative 'sakusei/style_preview'
 
 module Sakusei
   class Error < StandardError; end
