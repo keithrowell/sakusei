@@ -6,7 +6,17 @@ const os = require('os')
 const assert = require('assert')
 
 const RENDERER = path.resolve(__dirname, '../lib/sakusei/vue_renderer.js')
-const CWD = path.resolve(__dirname, '../../test_project/vue_examples')
+// Walk upward from __dirname to find the directory containing test_project/
+// (works from both the main repo and any worktree depth)
+function findProjectDir() {
+  let dir = __dirname
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, 'test_project'))) return dir
+    dir = path.dirname(dir)
+  }
+  throw new Error('Could not find project directory containing test_project/')
+}
+const CWD = path.join(findProjectDir(), 'test_project', 'vue_examples')
 
 function render(jobs) {
   const result = spawnSync('node', [RENDERER], {
