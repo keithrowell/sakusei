@@ -96,5 +96,15 @@ module Sakusei
       File.write(file, '<template><div></div></template>')
       assert_nil StylePack.extract_docs_description(file)
     end
+
+    def test_initializer_runs_npm_install
+      skip 'npm not available' unless system('which npm > /dev/null 2>&1')
+
+      initializer = StylePackInitializer.new(@temp_dir, 'testpack')
+      initializer.run
+
+      pack_path = File.join(@temp_dir, '.sakusei', 'style_packs', 'testpack')
+      assert Dir.exist?(File.join(pack_path, 'node_modules')), 'Expected node_modules after init'
+    end
   end
 end

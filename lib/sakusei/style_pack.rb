@@ -162,7 +162,11 @@ module Sakusei
     end
 
     def run
-      StylePack.init(@directory, @name)
+      pack_path = StylePack.init(@directory, @name)
+      $stderr.puts "Installing style pack dependencies for '#{@name}'..."
+      result = system('npm', 'install', '--prefix', pack_path)
+      raise Sakusei::Error, "npm install failed for style pack '#{@name}'. Check #{pack_path}." unless result
+      pack_path
     end
   end
 end
