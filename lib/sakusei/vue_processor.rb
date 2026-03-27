@@ -93,6 +93,11 @@ module Sakusei
       # (md-to-pdf doesn't process markdown inside HTML tags)
       html_content = slot_content ? markdown_to_html(slot_content.strip) : ''
 
+      # Special handling for BarChart component
+      if name == 'BarChart' && props['data']
+        props = process_chart_data(props)
+      end
+
       # Call Node.js script to render the component
       cmd = [
         'node',
@@ -139,21 +144,57 @@ module Sakusei
       File.expand_path('../vue_renderer.js', __FILE__)
     end
 
+    # Special marker for empty slot content (to preserve argument position)
+    EMPTY_SLOT_MARKER = '_EMPTY_'.freeze
+
     def escape_slot_content(content)
-      return '' if content.nil?
+      content = '' if content.nil?
+      content = content.to_s.strip
+
+      # Return special marker for empty content to preserve argument position
+      return EMPTY_SLOT_MARKER if content.empty?
 
       # Base64 encode to safely pass through shell
-      Base64.strict_encode64(content.strip)
+      Base64.strict_encode64(content)
+    end
+
+    # Process BarChart data - converts JSON string to processed items with percentages
+    def process_chart_data(props)
+      begin
+        items = JSON.parse(props['data'])
+        max_value = items.map { |i| i['value'] }.max.to_f
+
+        processed_items = items.map do |item|
+          {
+            'label' => item['label'],
+            'value' => item['value'],
+            'percentage' => ((item['value'] / max_value) * 100).round(2),
+            'color' => item['color']
+          }
+        end
+
+        # Replace data with processed items
+        props.merge('items' => processed_items)
+      rescue JSON::ParserError => e
+        puts "Warning: Failed to parse chart data: #{e.message}"
+        props
+      end
     end
 
     # Parse HTML-style attributes from a string
     # e.g., name="InfoCard" title="My Title" → { 'name' => 'InfoCard', 'title' => 'My Title' }
+    # Handles JSON data with escaped quotes: data="[{\"label\": \"Q1\"}]"
     def parse_attributes(attrs_string)
       attrs = {}
       return attrs if attrs_string.nil? || attrs_string.empty?
 
-      # Match name="value" or name='value' patterns
-      attrs_string.scan(/(\w+)=["']([^"']*)["']/) do |key, value|
+      # Match name="..." with proper handling of escaped quotes
+      # This regex captures content between quotes, including escaped quotes
+      attrs_string.scan(/(\w+)=("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*')/) do |key, quoted_value|
+        # Remove surrounding quotes and unescape
+        value = quoted_value[1..-2]  # Remove first and last quote
+        value = value.gsub('\\"', '"')  # Unescape quotes
+        value = value.gsub("\\'", "'")  # Unescape single quotes
         attrs[key] = value
       end
 
