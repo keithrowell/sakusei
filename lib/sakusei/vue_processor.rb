@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'shellwords'
+
 module Sakusei
   # Processes Vue components at build time
   # Requires Node.js with @vue/server-renderer installed
@@ -68,12 +70,16 @@ module Sakusei
         return "<!-- Vue component '#{name}' not found -->"
       end
 
+      # Process slot content through markdown first
+      # (md-to-pdf doesn't process markdown inside HTML tags)
+      html_content = slot_content ? markdown_to_html(slot_content.strip) : ''
+
       # Call Node.js script to render the component
       cmd = [
         'node',
         vue_renderer_script,
         component_file,
-        escape_slot_content(slot_content)
+        escape_slot_content(html_content)
       ].join(' ')
 
       # Capture stdout only (stderr goes to console for debugging)
@@ -107,6 +113,23 @@ module Sakusei
       # Base64 encode to safely pass through shell
       require 'base64'
       Base64.strict_encode64(content.strip)
+    end
+
+    # Convert markdown to HTML so it renders properly inside Vue component slots
+    # (md-to-pdf doesn't process markdown inside HTML tags)
+    def markdown_to_html(markdown)
+      return '' if markdown.nil? || markdown.empty?
+
+      # Use marked (common markdown parser) via npx
+      cmd = "echo #{Shellwords.escape(markdown)} | npx marked --stdin 2>/dev/null"
+      html = `#{cmd}`
+
+      if $?.success? && !html.empty?
+        html.strip
+      else
+        # Fallback: return original markdown if conversion fails
+        markdown
+      end
     end
   end
 end
