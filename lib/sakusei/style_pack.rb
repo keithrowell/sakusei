@@ -48,6 +48,28 @@ module Sakusei
       pack_path
     end
 
+    def components_dir
+      dir = File.join(@path, 'components')
+      Dir.exist?(dir) ? dir : nil
+    end
+
+    def list_components
+      return [] unless components_dir
+      Dir.glob(File.join(components_dir, '*.vue')).sort.map do |file|
+        {
+          name: File.basename(file, '.vue'),
+          description: self.class.extract_docs_description(file),
+          path: file
+        }
+      end
+    end
+
+    def self.extract_docs_description(file)
+      content = File.read(file)
+      match = content.match(/<docs>\s*\n\s*(.+)/)
+      match ? match[1].strip : nil
+    end
+
     # List all available style packs
     def self.list_available(start_dir = '.')
       packs = []
