@@ -59,12 +59,13 @@ module Sakusei
         escape_slot_content(slot_content)
       ].join(' ')
 
-      result = `#{cmd} 2>&1`
+      # Capture stdout only (stderr goes to console for debugging)
+      result = `#{cmd} 2>/dev/null`
 
       if $?.success?
         result
       else
-        "<!-- Vue component '#{name}' render error: #{result} -->"
+        "<!-- Vue component '#{name}' render error (check console) -->"
       end
     end
 
