@@ -1,6 +1,11 @@
 # Sakusei
 
-A PDF building system using Markdown, Ruby ERB, VueJS, and CSS templating.
+**Sakusei** (作成) — from the Japanese words meaning "creation," "making," or "craft."
+
+Like a master artisan refining their craft, Sakusei transforms raw Markdown into beautifully crafted PDF documents. Every document is an act of creation — structured, styled, and brought to life with precision.
+
+The name embodies the philosophy behind this tool: documents aren't just generated, they're _crafted_.
+
 
 ## Overview
 
@@ -11,6 +16,7 @@ Sakusei is a build system for creating PDF documents from Markdown source files.
 - **Hierarchical style packs** for consistent document styling
 - **File inclusion** for multi-file documents
 - **PDF concatenation** for combining multiple documents
+
 
 ## Installation
 
