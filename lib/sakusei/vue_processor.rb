@@ -87,7 +87,8 @@ module Sakusei
           'id' => id,
           'componentFile' => component_file || '',
           'props' => attrs,
-          'slotHtml' => slot_content ? markdown_to_html(slot_content.strip) : ''
+          'slotHtml' => slot_content ? markdown_to_html(slot_content.strip) : '',
+          'nodeModulesDir' => node_modules_dir_for(component_file)
         }
 
         "<!-- sakusei-vue-#{id} -->"
@@ -102,6 +103,17 @@ module Sakusei
       JSON.parse(stdout)
     rescue JSON::ParserError => e
       raise Error, "Vue renderer returned invalid JSON: #{e.message}"
+    end
+
+    def node_modules_dir_for(component_file)
+      return nil if component_file.nil? || component_file.empty?
+
+      if @style_pack&.components_dir && component_file.start_with?(@style_pack.components_dir)
+        File.join(@style_pack.path, 'node_modules')
+      else
+        local_nm = File.join(@base_dir, 'node_modules')
+        Dir.exist?(local_nm) ? local_nm : nil
+      end
     end
 
     def find_component_file(name)

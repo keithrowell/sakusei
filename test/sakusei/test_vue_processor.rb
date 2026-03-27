@@ -176,5 +176,42 @@ module Sakusei
       processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
       assert_nil processor.send(:find_component_file, 'Nonexistent')
     end
+
+    def test_job_nodeModulesDir_is_nil_for_local_component_without_node_modules
+      components = File.join(@temp_dir, 'components')
+      FileUtils.mkdir_p(components)
+      File.write(File.join(components, 'Comp.vue'), '<template><div></div></template>')
+
+      processor = VueProcessor.new('', @temp_dir)
+      jobs = []
+      processor.send(:first_pass, '<vue-component name="Comp" />', jobs)
+      assert_nil jobs[0]['nodeModulesDir']
+    end
+
+    def test_job_nodeModulesDir_is_set_for_local_component_with_node_modules
+      components = File.join(@temp_dir, 'components')
+      FileUtils.mkdir_p(components)
+      File.write(File.join(components, 'Comp.vue'), '<template><div></div></template>')
+      node_modules = File.join(@temp_dir, 'node_modules')
+      FileUtils.mkdir_p(node_modules)
+
+      processor = VueProcessor.new('', @temp_dir)
+      jobs = []
+      processor.send(:first_pass, '<vue-component name="Comp" />', jobs)
+      assert_equal node_modules, jobs[0]['nodeModulesDir']
+    end
+
+    def test_job_nodeModulesDir_is_style_pack_node_modules_for_pack_component
+      pack_dir = File.join(@temp_dir, 'pack')
+      pack_components = File.join(pack_dir, 'components')
+      FileUtils.mkdir_p(pack_components)
+      File.write(File.join(pack_components, 'PackComp.vue'), '<template><div></div></template>')
+
+      fake_pack = Struct.new(:path, :components_dir).new(pack_dir, pack_components)
+      processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
+      jobs = []
+      processor.send(:first_pass, '<vue-component name="PackComp" />', jobs)
+      assert_equal File.join(pack_dir, 'node_modules'), jobs[0]['nodeModulesDir']
+    end
   end
 end
