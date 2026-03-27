@@ -4,15 +4,25 @@ require 'thor'
 
 module Sakusei
   class CLI < Thor
-    desc 'build FILE', 'Build PDF from markdown FILE'
+    desc 'build FILES', 'Build PDF from markdown FILE(s). Accepts multiple files, globs, or directories.'
     option :output, aliases: '-o', desc: 'Output PDF file path'
     option :style, aliases: '-s', desc: 'Style pack name to use'
     option :config, aliases: '-c', desc: 'Path to md-to-pdf config file'
     option :stylesheet, aliases: '-css', desc: 'Path to CSS stylesheet'
-    def build(file)
-      raise Error, "File not found: #{file}" unless File.exist?(file)
+    option :page_breaks, aliases: '-p', type: :boolean, default: false, desc: 'Add page breaks between files'
+    def build(*files)
+      raise Error, 'No input files provided' if files.empty?
 
-      builder = Builder.new(file, options)
+      # Check if we have multiple files, globs, or directories
+      if files.length > 1 || files.any? { |f| f.include?('*') || File.directory?(f) }
+        # Multi-file build
+        builder = MultiFileBuilder.new(files, options)
+      else
+        # Single file build
+        raise Error, "File not found: #{files.first}" unless File.exist?(files.first)
+        builder = Builder.new(files.first, options)
+      end
+
       output_path = builder.build
       say "PDF created: #{output_path}", :green
     rescue Error => e
