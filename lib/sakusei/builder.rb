@@ -3,6 +3,7 @@
 require_relative 'style_pack'
 require_relative 'file_resolver'
 require_relative 'erb_processor'
+require_relative 'vue_processor'
 require_relative 'md_to_pdf_converter'
 
 module Sakusei
@@ -23,7 +24,10 @@ module Sakusei
       # 3. Process ERB templates
       processed_content = process_erb(resolved_content)
 
-      # 4. Convert to PDF
+      # 4. Process Vue components (if available)
+      processed_content = process_vue(processed_content)
+
+      # 5. Convert to PDF
       output_path = generate_output_path
       convert_to_pdf(processed_content, output_path, style_pack)
 
@@ -42,6 +46,10 @@ module Sakusei
 
     def process_erb(content)
       ErbProcessor.new(content, @source_dir).process
+    end
+
+    def process_vue(content)
+      VueProcessor.new(content, @source_dir).process
     end
 
     def convert_to_pdf(content, output_path, style_pack)
