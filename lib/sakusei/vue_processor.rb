@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 require 'shellwords'
+require 'json'
+require 'base64'
 
 module Sakusei
   # Processes Vue components at build time
@@ -27,6 +29,7 @@ module Sakusei
     def initialize(content, base_dir)
       @content = content
       @base_dir = base_dir
+      @collected_css = []
     end
 
     def process
@@ -37,7 +40,8 @@ module Sakusei
         raise Error, INSTALL_INSTRUCTIONS
       end
 
-      @content.gsub(VUE_COMPONENT_PATTERN) do |match|
+      # Process all vue-component tags and collect CSS
+      result = @content.gsub(VUE_COMPONENT_PATTERN) do |match|
         attrs_string = Regexp.last_match(1)
         slot_content = Regexp.last_match(2)
 
@@ -47,6 +51,14 @@ module Sakusei
 
         render_component(component_name, slot_content, attrs)
       end
+
+      # Inject collected CSS as a style block at the beginning
+      if @collected_css.any?
+        css_block = "<style>\n#{@collected_css.join("\n\n")}\n</style>\n\n"
+        result = css_block + result
+      end
+
+      result
     end
 
     def self.available?
@@ -94,7 +106,19 @@ module Sakusei
       result = `#{cmd} 2>/dev/null`
 
       if $?.success?
-        result
+        begin
+          # Parse JSON response
+          data = JSON.parse(result)
+
+          # Collect CSS if present
+          @collected_css << data['css'] if data['css'] && !data['css'].empty?
+
+          # Return the HTML
+          data['html']
+        rescue JSON::ParserError
+          # Fallback: return raw result if not valid JSON
+          result
+        end
       else
         "<!-- Vue component '#{name}' render error (check console) -->"
       end
@@ -119,7 +143,6 @@ module Sakusei
       return '' if content.nil?
 
       # Base64 encode to safely pass through shell
-      require 'base64'
       Base64.strict_encode64(content.strip)
     end
 
@@ -141,8 +164,6 @@ module Sakusei
     def escape_props(props)
       return '' if props.nil? || props.empty?
 
-      require 'json'
-      require 'base64'
       Base64.strict_encode64(props.to_json)
     end
 
