@@ -18,12 +18,12 @@ module Sakusei
 
       To use Vue components, install the required npm packages:
 
-        npm install @vue/server-renderer vue@3
+        npm install @vue/server-renderer @vue/compiler-sfc vue@3
 
       Or initialize a new package.json first:
 
         npm init -y
-        npm install @vue/server-renderer vue@3
+        npm install @vue/server-renderer @vue/compiler-sfc vue@3
     MSG
 
     def initialize(content, base_dir)
@@ -77,8 +77,7 @@ module Sakusei
     end
 
     def self.vue_renderer_installed?
-      # Check if @vue/server-renderer is available from the project directory
-      check_cmd = "cd '#{Dir.pwd}' && node -e \"try { require('@vue/server-renderer'); process.exit(0); } catch(e) { process.exit(1); }\" 2>/dev/null"
+      check_cmd = "cd '#{Dir.pwd}' && node -e \"try { require('@vue/server-renderer'); require('@vue/compiler-sfc'); process.exit(0); } catch(e) { process.exit(1); }\" 2>/dev/null"
       system(check_cmd)
     end
 
