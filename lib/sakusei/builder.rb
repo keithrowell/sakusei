@@ -25,7 +25,7 @@ module Sakusei
       processed_content = process_erb(resolved_content)
 
       # 4. Process Vue components (if available)
-      processed_content = process_vue(processed_content)
+      processed_content = process_vue(processed_content, style_pack)
 
       # 5. Convert to PDF
       output_path = generate_output_path
@@ -48,8 +48,8 @@ module Sakusei
       ErbProcessor.new(content, @source_dir).process
     end
 
-    def process_vue(content)
-      VueProcessor.new(content, @source_dir).process
+    def process_vue(content, style_pack)
+      VueProcessor.new(content, @source_dir, style_pack: style_pack).process
     end
 
     def convert_to_pdf(content, output_path, style_pack)
