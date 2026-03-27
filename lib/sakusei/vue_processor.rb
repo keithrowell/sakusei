@@ -6,6 +6,19 @@ module Sakusei
   class VueProcessor
     VUE_COMPONENT_PATTERN = /<vue-component\s+name="([^"]+)"(?:\s*\/>|>(.*?)<\/vue-component>)/m
 
+    INSTALL_INSTRUCTIONS = <<~MSG
+      Vue components detected but dependencies not found.
+
+      To use Vue components, install the required npm packages:
+
+        npm install @vue/server-renderer vue@3
+
+      Or initialize a new package.json first:
+
+        npm init -y
+        npm install @vue/server-renderer vue@3
+    MSG
+
     def initialize(content, base_dir)
       @content = content
       @base_dir = base_dir
@@ -13,7 +26,11 @@ module Sakusei
 
     def process
       return @content unless vue_components_present?
-      return @content unless vue_renderer_available?
+
+      # Check if Vue renderer is available
+      unless vue_renderer_available?
+        raise Error, INSTALL_INSTRUCTIONS
+      end
 
       @content.gsub(VUE_COMPONENT_PATTERN) do |match|
         component_name = Regexp.last_match(1)
@@ -39,8 +56,8 @@ module Sakusei
     end
 
     def self.vue_renderer_installed?
-      # Check if @vue/server-renderer is available
-      check_cmd = 'node -e "try { require(\'@vue/server-renderer\'); process.exit(0); } catch(e) { process.exit(1); }" 2>/dev/null'
+      # Check if @vue/server-renderer is available from the project directory
+      check_cmd = "cd '#{Dir.pwd}' && node -e \"try { require('@vue/server-renderer'); process.exit(0); } catch(e) { process.exit(1); }\" 2>/dev/null"
       system(check_cmd)
     end
 
