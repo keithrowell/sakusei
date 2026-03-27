@@ -31,9 +31,9 @@ module Sakusei
 
     def process
       return @content unless vue_components_present?
-      raise Error, INSTALL_INSTRUCTIONS unless vue_renderer_available?
 
       ensure_style_pack_deps_installed
+      raise Error, INSTALL_INSTRUCTIONS unless vue_renderer_available?
 
       jobs = []
       content_with_placeholders = first_pass(@content, jobs)
@@ -68,7 +68,18 @@ module Sakusei
     end
 
     def vue_renderer_available?
+      return true if style_pack_has_vue_renderer?
       self.class.available?
+    end
+
+    def style_pack_has_vue_renderer?
+      return false unless @style_pack
+      nm = File.join(@style_pack.path, 'node_modules')
+      return false unless Dir.exist?(nm)
+      env = { 'NODE_PATH' => nm }
+      system(env, 'node', '-e',
+        "try{require('@vue/server-renderer');process.exit(0)}catch(e){process.exit(1)}",
+        %i[out err] => File::NULL)
     end
 
     def self.vue_renderer_installed?
@@ -99,12 +110,22 @@ module Sakusei
 
     # Send all jobs to Node.js in one call via stdin/stdout.
     def render_batch(jobs)
-      stdout, stderr, status = Open3.capture3('node', vue_renderer_script, stdin_data: jobs.to_json)
+      env = renderer_env
+      stdout, stderr, status = Open3.capture3(env, 'node', vue_renderer_script, stdin_data: jobs.to_json)
       raise Error, "Vue renderer failed: #{stderr.strip}" unless status.success?
 
       JSON.parse(stdout)
     rescue JSON::ParserError => e
       raise Error, "Vue renderer returned invalid JSON: #{e.message}"
+    end
+
+    def renderer_env
+      env = {}
+      if @style_pack
+        nm = File.join(@style_pack.path, 'node_modules')
+        env['NODE_PATH'] = nm if Dir.exist?(nm)
+      end
+      env
     end
 
     def node_modules_dir_for(component_file)

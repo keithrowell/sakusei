@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require_relative '../test_helper'
+require 'json'
 
 module Sakusei
   # Test subclass that bypasses Node.js for unit testing process() logic
@@ -238,6 +239,32 @@ module Sakusei
       fake_pack = Struct.new(:path, :components_dir).new(pack_dir, pack_components)
       processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
       refute processor.send(:style_pack_needs_install?, fake_pack)
+    end
+
+    def test_style_pack_has_vue_renderer_returns_true_when_node_modules_present
+      skip 'npm not available' unless system('which npm > /dev/null 2>&1')
+
+      pack_dir = File.join(@temp_dir, 'pack')
+      pack_components = File.join(pack_dir, 'components')
+      FileUtils.mkdir_p(pack_components)
+      File.write(File.join(pack_components, 'Comp.vue'), '<template><div></div></template>')
+      # Install real vue deps
+      File.write(File.join(pack_dir, 'package.json'), JSON.generate({ dependencies: { '@vue/server-renderer' => '^3.5.0', '@vue/compiler-sfc' => '^3.5.0', 'vue' => '^3.5.0' } }))
+      system('npm', 'install', '--prefix', pack_dir, %i[out err] => File::NULL)
+
+      fake_pack = Struct.new(:path, :components_dir).new(pack_dir, pack_components)
+      processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
+      assert processor.send(:style_pack_has_vue_renderer?)
+    end
+
+    def test_style_pack_has_vue_renderer_returns_false_when_no_node_modules
+      pack_dir = File.join(@temp_dir, 'pack')
+      pack_components = File.join(pack_dir, 'components')
+      FileUtils.mkdir_p(pack_components)
+
+      fake_pack = Struct.new(:path, :components_dir).new(pack_dir, pack_components)
+      processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
+      refute processor.send(:style_pack_has_vue_renderer?)
     end
   end
 end
