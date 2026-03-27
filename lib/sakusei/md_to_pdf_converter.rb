@@ -45,9 +45,17 @@ module Sakusei
       config = @options[:config] || @style_pack.config
       cmd << '--config-file' << config if config
 
-      # Stylesheet
-      stylesheet = @options[:stylesheet] || @style_pack.stylesheet
-      cmd << '--stylesheet' << stylesheet if stylesheet
+      # Stylesheets - base CSS first, then style pack CSS
+      # This allows style packs to override base styles
+      stylesheets = [StylePack.base_stylesheet]
+
+      # Add style pack stylesheet if available
+      pack_stylesheet = @options[:stylesheet] || @style_pack.stylesheet
+      stylesheets << pack_stylesheet if pack_stylesheet
+
+      stylesheets.each do |stylesheet|
+        cmd << '--stylesheet' << stylesheet
+      end
 
       # Basedir for resolving relative paths
       cmd << '--basedir' << temp_dir

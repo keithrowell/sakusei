@@ -14,11 +14,23 @@ Sakusei is a build system for creating PDF documents from Markdown source files.
 
 ## Installation
 
-```bash
-# Install as a Ruby gem
-gem install sakusei
+### macOS (Homebrew)
 
-# Or build from source
+```bash
+# Add the tap and install
+brew tap keithrowell/sakusei https://github.com/keithrowell/sakusei/homebrew-tap
+brew install sakusei
+```
+
+### Ruby Gem
+
+```bash
+gem install sakusei
+```
+
+### Build from Source
+
+```bash
 git clone https://github.com/keithrowell/sakusei
 cd sakusei
 bundle install
@@ -36,6 +48,24 @@ rake install
 
 ```bash
 sakusei build document.md
+```
+
+Or simply (build is the default command):
+
+```bash
+sakusei document.md
+```
+
+Extension is optional - `.md`, `.text`, or `.markdown` will be tried:
+
+```bash
+sakusei document    # Looks for document.md, document.text, or document.markdown
+```
+
+Auto-open after building:
+
+```bash
+sakusei document.md --open
 ```
 
 ### Initialize a Style Pack
@@ -84,6 +114,56 @@ Use ERB for dynamic content:
 # Report Generated <%= today %>
 
 Environment: <%= env('RAILS_ENV', 'development') %>
+```
+
+## Page Breaks
+
+### Manual Page Breaks
+
+Insert page breaks in your markdown using HTML:
+
+```markdown
+# Chapter 1
+
+Content here...
+
+<div class="page-break"></div>
+
+# Chapter 2
+
+More content...
+```
+
+Available classes:
+- `.page-break` or `.page-break-after` - Break after this element
+- `.page-break-before` - Break before this element
+
+### Automatic Keep-Together
+
+The base stylesheet automatically prevents page breaks inside these elements:
+- Tables (including rows)
+- Code blocks (`<pre>`)
+- Blockquotes
+- Images
+- Figures and captions
+- Definition lists (`<dl>`, `<dt>`, `<dd>`)
+- Details/summary sections
+- Math blocks (KaTeX)
+- Custom elements: `.admonition`, `.callout`, `.card`, `.box`
+
+To force keep-together on any element, add the `.keep-together` class:
+
+```markdown
+<div class="keep-together">
+
+This content will not be split across pages.
+
+| Table | Data |
+|-------|------|
+| A     | 1    |
+| B     | 2    |
+
+</div>
 ```
 
 ## Build Scripts

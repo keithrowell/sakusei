@@ -1,11 +1,18 @@
 # frozen_string_literal: true
 
+require 'set'
+
 module Sakusei
   class StylePack
     STYLE_PACKS_DIR = 'style_packs'
     SAKUSEI_DIR = '.sakusei'
 
     attr_reader :name, :path, :config, :stylesheet, :header, :footer
+
+    # Path to the base CSS that is always applied before style pack CSS
+    def self.base_stylesheet
+      File.expand_path('../templates/base.css', __dir__)
+    end
 
     def initialize(path, name = nil)
       @path = path
@@ -39,6 +46,41 @@ module Sakusei
       FileUtils.cp_r(Dir.glob("#{default_path}/*"), pack_path)
 
       pack_path
+    end
+
+    # List all available style packs
+    def self.list_available(start_dir = '.')
+      packs = []
+
+      # Find all .sakusei directories walking up from start_dir
+      current = File.expand_path(start_dir)
+      visited_dirs = Set.new
+
+      loop do
+        sakusei_path = File.join(current, SAKUSEI_DIR)
+        if Dir.exist?(sakusei_path) && !visited_dirs.include?(sakusei_path)
+          visited_dirs.add(sakusei_path)
+          packs_dir = File.join(sakusei_path, STYLE_PACKS_DIR)
+          if Dir.exist?(packs_dir)
+            Dir.glob(File.join(packs_dir, '*')).select { |f| File.directory?(f) }.each do |pack_path|
+              packs << { name: File.basename(pack_path), path: pack_path }
+            end
+          end
+        end
+
+        parent = File.dirname(current)
+        break if parent == current
+
+        current = parent
+      end
+
+      # Add default style pack
+      default_path = File.expand_path('../templates/default_style_pack', __dir__)
+      packs << { name: 'default', path: default_path }
+
+      # Remove duplicates by name (closer packs take precedence)
+      seen_names = Set.new
+      packs.reverse.select { |p| seen_names.add?(p[:name]) }.reverse
     end
 
     private
