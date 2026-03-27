@@ -33,6 +33,8 @@ module Sakusei
       return @content unless vue_components_present?
       raise Error, INSTALL_INSTRUCTIONS unless vue_renderer_available?
 
+      ensure_style_pack_deps_installed
+
       jobs = []
       content_with_placeholders = first_pass(@content, jobs)
       return content_with_placeholders if jobs.empty?
@@ -148,6 +150,19 @@ module Sakusei
       end
 
       attrs
+    end
+
+    def style_pack_needs_install?(style_pack)
+      return false unless style_pack&.components_dir
+      return false unless File.exist?(File.join(style_pack.path, 'package.json'))
+      !Dir.exist?(File.join(style_pack.path, 'node_modules'))
+    end
+
+    def ensure_style_pack_deps_installed
+      return unless style_pack_needs_install?(@style_pack)
+      $stderr.puts "Installing style pack dependencies for '#{@style_pack.name}'..."
+      result = system('npm', 'install', '--prefix', @style_pack.path)
+      raise Error, "npm install failed for style pack '#{@style_pack.name}'. Check #{@style_pack.path}." unless result
     end
 
     def markdown_to_html(markdown)

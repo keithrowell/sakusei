@@ -213,5 +213,31 @@ module Sakusei
       processor.send(:first_pass, '<vue-component name="PackComp" />', jobs)
       assert_equal File.join(pack_dir, 'node_modules'), jobs[0]['nodeModulesDir']
     end
+
+    def test_style_pack_needs_install_returns_true_when_package_json_but_no_node_modules
+      pack_dir = File.join(@temp_dir, 'pack')
+      pack_components = File.join(pack_dir, 'components')
+      FileUtils.mkdir_p(pack_components)
+      File.write(File.join(pack_components, 'Comp.vue'), '<template><div></div></template>')
+      File.write(File.join(pack_dir, 'package.json'), '{}')
+      # No node_modules/ created
+
+      fake_pack = Struct.new(:path, :components_dir).new(pack_dir, pack_components)
+      processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
+      assert processor.send(:style_pack_needs_install?, fake_pack)
+    end
+
+    def test_style_pack_needs_install_returns_false_when_node_modules_exists
+      pack_dir = File.join(@temp_dir, 'pack')
+      pack_components = File.join(pack_dir, 'components')
+      FileUtils.mkdir_p(pack_components)
+      File.write(File.join(pack_components, 'Comp.vue'), '<template><div></div></template>')
+      File.write(File.join(pack_dir, 'package.json'), '{}')
+      FileUtils.mkdir_p(File.join(pack_dir, 'node_modules'))
+
+      fake_pack = Struct.new(:path, :components_dir).new(pack_dir, pack_components)
+      processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
+      refute processor.send(:style_pack_needs_install?, fake_pack)
+    end
   end
 end
