@@ -23,9 +23,10 @@ module Sakusei
         npm install @vue/server-renderer @vue/compiler-sfc vue@3
     MSG
 
-    def initialize(content, base_dir)
+    def initialize(content, base_dir, style_pack: nil)
       @content = content
       @base_dir = base_dir
+      @style_pack = style_pack
     end
 
     def process
@@ -104,12 +105,20 @@ module Sakusei
     end
 
     def find_component_file(name)
-      possible_paths = [
+      local_paths = [
         File.join(@base_dir, 'components', "#{name}.vue"),
         File.join(@base_dir, "#{name}.vue"),
         File.join(@base_dir, 'vue_components', "#{name}.vue")
       ]
-      possible_paths.find { |p| File.exist?(p) }
+      local = local_paths.find { |p| File.exist?(p) }
+      return local if local
+
+      if @style_pack&.components_dir
+        pack_file = File.join(@style_pack.components_dir, "#{name}.vue")
+        return pack_file if File.exist?(pack_file)
+      end
+
+      nil
     end
 
     def vue_renderer_script

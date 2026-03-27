@@ -5,8 +5,8 @@ require_relative '../test_helper'
 module Sakusei
   # Test subclass that bypasses Node.js for unit testing process() logic
   class FakeVueProcessor < VueProcessor
-    def initialize(content, base_dir, batch_results)
-      super(content, base_dir)
+    def initialize(content, base_dir, batch_results, style_pack: nil)
+      super(content, base_dir, style_pack: style_pack)
       @batch_results = batch_results
     end
 
@@ -136,6 +136,45 @@ module Sakusei
       )
       result = processor.process
       refute result.start_with?('<style>'), "Expected no <style> block when css is empty"
+    end
+
+    def test_finds_component_in_style_pack_when_not_local
+      pack_dir = File.join(@temp_dir, 'pack')
+      pack_components = File.join(pack_dir, 'components')
+      FileUtils.mkdir_p(pack_components)
+      File.write(File.join(pack_components, 'PackComp.vue'), '<template><div>Pack</div></template>')
+
+      fake_pack = Struct.new(:path, :components_dir).new(pack_dir, pack_components)
+      processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
+      result = processor.send(:find_component_file, 'PackComp')
+      assert_equal File.join(pack_components, 'PackComp.vue'), result
+    end
+
+    def test_local_component_overrides_style_pack_component
+      local_components = File.join(@temp_dir, 'components')
+      FileUtils.mkdir_p(local_components)
+      local_file = File.join(local_components, 'SharedComp.vue')
+      File.write(local_file, '<template><div>Local</div></template>')
+
+      pack_dir = File.join(@temp_dir, 'pack')
+      pack_components = File.join(pack_dir, 'components')
+      FileUtils.mkdir_p(pack_components)
+      File.write(File.join(pack_components, 'SharedComp.vue'), '<template><div>Pack</div></template>')
+
+      fake_pack = Struct.new(:path, :components_dir).new(pack_dir, pack_components)
+      processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
+      result = processor.send(:find_component_file, 'SharedComp')
+      assert_equal local_file, result
+    end
+
+    def test_find_component_returns_nil_when_not_found_in_pack_or_local
+      pack_dir = File.join(@temp_dir, 'pack')
+      pack_components = File.join(pack_dir, 'components')
+      FileUtils.mkdir_p(pack_components)
+
+      fake_pack = Struct.new(:path, :components_dir).new(pack_dir, pack_components)
+      processor = VueProcessor.new('', @temp_dir, style_pack: fake_pack)
+      assert_nil processor.send(:find_component_file, 'Nonexistent')
     end
   end
 end
