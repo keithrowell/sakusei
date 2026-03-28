@@ -127,6 +127,80 @@ module Sakusei
       exit 1
     end
 
+    desc 'component NAME', 'Show detailed information about a Vue component'
+    option :directory, aliases: '-d', default: '.', desc: 'Directory to search for style packs'
+    option :verbose, aliases: '-v', type: :boolean, default: false, desc: 'Show full component source code'
+    def component(name)
+      info = StylePack.find_component(options[:directory], name)
+
+      unless info
+        say_error "Component '#{name}' not found"
+        exit 1
+      end
+
+      say "\n"
+      say "═" * 60, :cyan
+      say "  #{info[:name]}", :cyan
+      say "═" * 60, :cyan
+      say "\n"
+
+      # Description
+      if info[:description]
+        say "📄 Description:"
+        say "   #{info[:description]}"
+        say "\n"
+      end
+
+      # Location
+      say "📁 Location:"
+      say "   #{info[:path]}", :cyan
+      say "   (in style pack: #{info[:pack_name]})"
+      say "\n"
+
+      # Props
+      if info[:props]&.any?
+        say "⚙️  Props:"
+        info[:props].each do |prop|
+          req_str = prop[:required] ? 'required' : 'optional'
+          default_str = prop[:default] ? " (default: #{prop[:default]})" : ""
+          type_str = prop[:type] ? " [#{prop[:type]}]" : ""
+          say "   • #{prop[:name]}#{type_str} - #{req_str}#{default_str}"
+        end
+        say "\n"
+      end
+
+      # Usage
+      say "📝 Usage:"
+      say "   #{info[:usage]}", :green
+      say "\n"
+
+      # Full documentation if available
+      if info[:full_description] && info[:full_description].lines.count > 1
+        say "📖 Documentation:"
+        info[:full_description].lines.each do |line|
+          say "   #{line.rstrip}"
+        end
+        say "\n"
+      end
+
+      # Full source option
+      if options[:verbose]
+        say "🔍 Template:"
+        say info[:template] || "(no template)"
+        say "\n"
+        say "🔍 Script:"
+        say info[:script] || "(no script)"
+        say "\n"
+        say "🔍 Style:"
+        say info[:style] || "(no style)"
+      else
+        say "💡 Use --verbose to see the full component source code"
+      end
+    rescue Error => e
+      say_error e.message
+      exit 1
+    end
+
     desc 'version', 'Show version'
     def version
       say "Sakusei #{Sakusei::VERSION}"
