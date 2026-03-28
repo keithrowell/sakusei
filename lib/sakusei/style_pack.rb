@@ -70,6 +70,137 @@ module Sakusei
       match ? match[1].strip : nil
     end
 
+    # Find a component by name across style packs and local directories
+    def self.find_component(start_dir, component_name)
+      # Search in style packs
+      sakusei_path = find_sakusei_dir(start_dir)
+      if sakusei_path
+        packs_dir = File.join(sakusei_path, STYLE_PACKS_DIR)
+        if Dir.exist?(packs_dir)
+          Dir.glob(File.join(packs_dir, '*')).select { |f| File.directory?(f) }.each do |pack_path|
+            component_file = File.join(pack_path, 'components', "#{component_name}.vue")
+            if File.exist?(component_file)
+              pack = new(pack_path)
+              return pack.extract_component_info(component_file)
+            end
+          end
+        end
+      end
+
+      # Search in local ./components directory
+      local_component = File.join(Dir.pwd, 'components', "#{component_name}.vue")
+      if File.exist?(local_component)
+        return extract_component_info(local_component, 'local')
+      end
+
+      # Search in default style pack
+      default_path = File.expand_path('../templates/default_style_pack', __dir__)
+      default_component = File.join(default_path, 'components', "#{component_name}.vue")
+      if File.exist?(default_component)
+        pack = new(default_path, 'default')
+        return pack.extract_component_info(default_component)
+      end
+
+      nil
+    end
+
+    # Extract full component information from a Vue file
+    def self.extract_component_info(file, pack_name = nil)
+      pack_name ||= File.basename(File.dirname(File.dirname(file)))
+      content = File.read(file)
+
+      # Extract docs section
+      docs_match = content.match(/<docs>(.+?)<\/docs>/m)
+      docs = docs_match ? docs_match[1].strip : nil
+
+      # Extract template section
+      template_match = content.match(/<template>(.+?)<\/template>/m)
+      template = template_match ? template_match[1].strip : nil
+
+      # Extract script section
+      script_match = content.match(/<script(?:\s+setup)?>(.+?)<\/script>/m)
+      script = script_match ? script_match[1].strip : nil
+
+      # Extract style section
+      style_match = content.match(/<style(?:\s+scoped)?>(.+?)<\/style>/m)
+      style = style_match ? style_match[1].strip : nil
+
+      # Parse props from script
+      props = parse_props(script) if script
+
+      # Generate usage example
+      usage = generate_usage(File.basename(file, '.vue'), props, template)
+
+      {
+        name: File.basename(file, '.vue'),
+        description: docs ? docs.lines.first&.strip : nil,
+        full_description: docs,
+        path: file,
+        pack_name: pack_name,
+        template: template,
+        script: script,
+        style: style,
+        props: props,
+        usage: usage
+      }
+    end
+
+    # Instance method wrapper for extract_component_info
+    def extract_component_info(file)
+      self.class.extract_component_info(file, @name)
+    end
+
+    private_class_method def self.parse_props(script)
+      props = []
+
+      # Match defineProps with object syntax
+      props_match = script.match(/defineProps\(\{(.+?)\}\)/m)
+      if props_match
+        props_block = props_match[1]
+        # Parse each property
+        props_block.scan(/(\w+):\s*\{([^}]+)\}/).each do |name, config|
+          prop = { name: name, required: false }
+          if config.include?('required: true')
+            prop[:required] = true
+          elsif config.include?('default:')
+            default_match = config.match(/default:\s*([^,\n]+)/)
+            prop[:default] = default_match[1].strip if default_match
+          end
+          if config.include?('type:')
+            type_match = config.match(/type:\s*(\w+)/)
+            prop[:type] = type_match[1] if type_match
+          end
+          props << prop
+        end
+      end
+
+      # Match defineProps with array syntax: defineProps(['name', 'other'])
+      array_match = script.match(/defineProps\(\[\s*([^\]]+)\s*\]\)/)
+      if array_match
+        array_match[1].scan(/['"]([^'"]+)['"]/).each do |name|
+          props << { name: name[0], required: true }
+        end
+      end
+
+      props
+    end
+
+    private_class_method def self.generate_usage(name, props, template)
+      return "<#{name} />" unless props&.any?
+
+      attrs = props.map do |prop|
+        if prop[:required]
+          "#{prop[:name]}=\"...\""
+        elsif prop[:default]
+          "#{prop[:name]}=\"#{prop[:default].gsub(/['"]/, '')}\""
+        else
+          "#{prop[:name]}=\"...\""
+        end
+      end
+
+      "<#{name} #{attrs.join(' ')} />"
+    end
+
     # List all available style packs
     def self.list_available(start_dir = '.')
       packs = []
