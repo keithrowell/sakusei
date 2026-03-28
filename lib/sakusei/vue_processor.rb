@@ -8,7 +8,8 @@ module Sakusei
   # Processes Vue components at build time using a single Node.js process per build.
   # Requires Node.js with @vue/server-renderer, @vue/compiler-sfc, and vue@3 installed.
   class VueProcessor
-    VUE_COMPONENT_PATTERN = /<vue-component\s+([^>]+)(?:\s*\/>|>(.*?)<\/vue-component>)/m
+    # Attribute values may contain > (e.g. HTML in slot-like props), so we match quoted strings properly
+    VUE_COMPONENT_PATTERN = /<vue-component((?:\s+[\w-]+=(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'))*)\s*(?:\/>|>(.*?)<\/vue-component>)/m
 
     INSTALL_INSTRUCTIONS = <<~MSG
       Vue components detected but dependencies not found.
@@ -39,7 +40,11 @@ module Sakusei
       content_with_placeholders = first_pass(@content, jobs)
       return content_with_placeholders if jobs.empty?
 
+      content_with_placeholders = wrap_headings_with_placeholders(content_with_placeholders)
+
+      $stderr.puts "[sakusei] rendering #{jobs.length} Vue component(s)..."
       results = render_batch(jobs)
+      $stderr.puts "[sakusei] Vue components rendered"
       result_map = results.each_with_object({}) { |r, h| h[r['id']] = r }
 
       all_css = []
@@ -95,12 +100,14 @@ module Sakusei
         component_name = attrs.delete('name')
         component_file = find_component_file(component_name)
 
+        named = parse_named_slots(slot_content)
         id = jobs.length
         jobs << {
           'id' => id,
           'componentFile' => component_file || '',
           'props' => attrs,
-          'slotHtml' => slot_content ? markdown_to_html(slot_content.strip) : '',
+          'slotHtml' => named.any? ? '' : (slot_content ? markdown_to_html(slot_content.strip) : ''),
+          'namedSlots' => named,
           'nodeModulesDir' => node_modules_dir_for(component_file)
         }
 
@@ -184,6 +191,29 @@ module Sakusei
       $stderr.puts "Installing style pack dependencies for '#{@style_pack.name}'..."
       result = system('npm', 'install', '--prefix', @style_pack.path)
       raise Error, "npm install failed for style pack '#{@style_pack.name}'. Check #{@style_pack.path}." unless result
+    end
+
+    # Wrap a markdown heading immediately before a placeholder in a keep-together div.
+    # Converts the heading to HTML so marked doesn't process it inside the div block.
+    def wrap_headings_with_placeholders(content)
+      content.gsub(/^([#]{1,6}) ([^\n]+)\n+(<!-- sakusei-vue-\d+ -->)/) do
+        level = Regexp.last_match(1).length
+        text  = Regexp.last_match(2).strip
+        placeholder = Regexp.last_match(3)
+        "<div class=\"kdc-section\">\n<h#{level}>#{text}</h#{level}>\n\n#{placeholder}\n\n</div>"
+      end
+    end
+
+    # Extract <template #slotname>...</template> sections and convert their markdown to HTML.
+    # Returns a hash of { slot_name => html }. Empty hash if no named slots found.
+    def parse_named_slots(content)
+      return {} unless content
+
+      slots = {}
+      content.scan(/<template\s+#(\w+)>(.*?)<\/template>/m) do |name, slot_md|
+        slots[name] = markdown_to_html(slot_md.strip)
+      end
+      slots
     end
 
     def markdown_to_html(markdown)

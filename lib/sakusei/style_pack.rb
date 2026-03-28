@@ -102,7 +102,7 @@ module Sakusei
 
       # Remove duplicates by name (closer packs take precedence)
       seen_names = Set.new
-      packs.reverse.select { |p| seen_names.add?(p[:name]) }.reverse
+      packs.select { |p| seen_names.add?(p[:name]) }
     end
 
     private

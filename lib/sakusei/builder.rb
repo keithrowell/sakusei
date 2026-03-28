@@ -16,21 +16,27 @@ module Sakusei
 
     def build
       # 1. Discover and load style pack
+      $stderr.puts "[sakusei] discovering style pack..."
       style_pack = discover_style_pack
+      $stderr.puts "[sakusei] style pack: #{style_pack.name} (#{style_pack.path})"
 
       # 2. Resolve and concatenate file references
+      $stderr.puts "[sakusei] resolving file includes..."
       resolved_content = resolve_files
 
       # 3. Process ERB templates
+      $stderr.puts "[sakusei] processing ERB..."
       processed_content = process_erb(resolved_content)
 
       # 4. Process Vue components (if available)
       processed_content = process_vue(processed_content, style_pack)
 
       # 5. Convert to PDF
+      $stderr.puts "[sakusei] converting to PDF..."
       output_path = generate_output_path
       convert_to_pdf(processed_content, output_path, style_pack)
 
+      $stderr.puts "[sakusei] written: #{output_path}"
       output_path
     end
 
@@ -45,7 +51,7 @@ module Sakusei
     end
 
     def process_erb(content)
-      ErbProcessor.new(content, @source_dir).process
+      ErbProcessor.new(content, @source_dir, source_file: @source_file).process
     end
 
     def process_vue(content, style_pack)

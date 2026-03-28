@@ -15,9 +15,9 @@ module Sakusei
     def convert
       # Create temp directory for working files
       Dir.mktmpdir('sakusei') do |temp_dir|
-        # Write content to temp markdown file
+        # Write content to temp markdown file, prepending any page chrome from the style pack
         temp_md = File.join(temp_dir, 'input.md')
-        File.write(temp_md, @content)
+        File.write(temp_md, page_chrome_prefix + @content)
 
         # Build md-to-pdf command
         cmd = build_command(temp_md, temp_dir)
@@ -37,6 +37,14 @@ module Sakusei
     end
 
     private
+
+    def page_chrome_prefix
+      return '' unless @style_pack
+      %i[header footer].map do |part|
+        path = @style_pack.public_send(part)
+        path ? File.read(path) + "\n" : ''
+      end.join
+    end
 
     def build_command(temp_path, temp_dir)
       cmd = ['npx', 'md-to-pdf']
