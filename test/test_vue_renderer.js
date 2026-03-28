@@ -156,6 +156,26 @@ import Child from '${childFile}'
   }
 })
 
+test('renders with explicit nodeModulesDir field in job', () => {
+  const nodeModulesDir = path.join(process.cwd(), 'node_modules')
+  const jobs = [{
+    id: 0,
+    componentFile: path.join(process.cwd(), 'components', 'InfoCard.vue'),
+    props: {},
+    slotHtml: '',
+    nodeModulesDir
+  }]
+  const result = spawnSync('node', [RENDERER], {
+    input: JSON.stringify(jobs),
+    cwd: process.cwd(),
+    encoding: 'utf-8'
+  })
+  assert.strictEqual(result.status, 0, `stderr: ${result.stderr}`)
+  const results = JSON.parse(result.stdout)
+  assert.strictEqual(results[0].id, 0)
+  assert.ok(results[0].html.length > 0, 'Expected non-empty HTML')
+})
+
 if (failed > 0) {
   console.error(`\n${failed} test(s) failed, ${passed} passed`)
   process.exit(1)

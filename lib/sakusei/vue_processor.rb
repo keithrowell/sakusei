@@ -23,13 +23,16 @@ module Sakusei
         npm install @vue/server-renderer @vue/compiler-sfc vue@3
     MSG
 
-    def initialize(content, base_dir)
+    def initialize(content, base_dir, style_pack: nil)
       @content = content
       @base_dir = base_dir
+      @style_pack = style_pack
     end
 
     def process
       return @content unless vue_components_present?
+
+      ensure_style_pack_deps_installed
       raise Error, INSTALL_INSTRUCTIONS unless vue_renderer_available?
 
       jobs = []
@@ -65,7 +68,18 @@ module Sakusei
     end
 
     def vue_renderer_available?
+      return true if style_pack_has_vue_renderer?
       self.class.available?
+    end
+
+    def style_pack_has_vue_renderer?
+      return false unless @style_pack
+      nm = File.join(@style_pack.path, 'node_modules')
+      return false unless Dir.exist?(nm)
+      env = { 'NODE_PATH' => nm }
+      system(env, 'node', '-e',
+        "try{require('@vue/server-renderer');process.exit(0)}catch(e){process.exit(1)}",
+        %i[out err] => File::NULL)
     end
 
     def self.vue_renderer_installed?
@@ -86,7 +100,8 @@ module Sakusei
           'id' => id,
           'componentFile' => component_file || '',
           'props' => attrs,
-          'slotHtml' => slot_content ? markdown_to_html(slot_content.strip) : ''
+          'slotHtml' => slot_content ? markdown_to_html(slot_content.strip) : '',
+          'nodeModulesDir' => node_modules_dir_for(component_file)
         }
 
         "<!-- sakusei-vue-#{id} -->"
@@ -95,7 +110,8 @@ module Sakusei
 
     # Send all jobs to Node.js in one call via stdin/stdout.
     def render_batch(jobs)
-      stdout, stderr, status = Open3.capture3('node', vue_renderer_script, stdin_data: jobs.to_json)
+      env = renderer_env
+      stdout, stderr, status = Open3.capture3(env, 'node', vue_renderer_script, stdin_data: jobs.to_json)
       raise Error, "Vue renderer failed: #{stderr.strip}" unless status.success?
 
       JSON.parse(stdout)
@@ -103,13 +119,41 @@ module Sakusei
       raise Error, "Vue renderer returned invalid JSON: #{e.message}"
     end
 
+    def renderer_env
+      env = {}
+      if @style_pack
+        nm = File.join(@style_pack.path, 'node_modules')
+        env['NODE_PATH'] = nm if Dir.exist?(nm)
+      end
+      env
+    end
+
+    def node_modules_dir_for(component_file)
+      return nil if component_file.nil? || component_file.empty?
+
+      if @style_pack&.components_dir && component_file.start_with?(@style_pack.components_dir)
+        File.join(@style_pack.path, 'node_modules')
+      else
+        local_nm = File.join(@base_dir, 'node_modules')
+        Dir.exist?(local_nm) ? local_nm : nil
+      end
+    end
+
     def find_component_file(name)
-      possible_paths = [
+      local_paths = [
         File.join(@base_dir, 'components', "#{name}.vue"),
         File.join(@base_dir, "#{name}.vue"),
         File.join(@base_dir, 'vue_components', "#{name}.vue")
       ]
-      possible_paths.find { |p| File.exist?(p) }
+      local = local_paths.find { |p| File.exist?(p) }
+      return local if local
+
+      if @style_pack&.components_dir
+        pack_file = File.join(@style_pack.components_dir, "#{name}.vue")
+        return pack_file if File.exist?(pack_file)
+      end
+
+      nil
     end
 
     def vue_renderer_script
@@ -127,6 +171,19 @@ module Sakusei
       end
 
       attrs
+    end
+
+    def style_pack_needs_install?(style_pack)
+      return false unless style_pack&.components_dir
+      return false unless File.exist?(File.join(style_pack.path, 'package.json'))
+      !Dir.exist?(File.join(style_pack.path, 'node_modules'))
+    end
+
+    def ensure_style_pack_deps_installed
+      return unless style_pack_needs_install?(@style_pack)
+      $stderr.puts "Installing style pack dependencies for '#{@style_pack.name}'..."
+      result = system('npm', 'install', '--prefix', @style_pack.path)
+      raise Error, "npm install failed for style pack '#{@style_pack.name}'. Check #{@style_pack.path}." unless result
     end
 
     def markdown_to_html(markdown)
