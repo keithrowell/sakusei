@@ -6,7 +6,17 @@ const os = require('os')
 const assert = require('assert')
 
 const RENDERER = path.resolve(__dirname, '../lib/sakusei/vue_renderer.js')
-const CWD = path.resolve(__dirname, '../../test_project/vue_examples')
+// Walk upward from __dirname to find the directory containing test_project/
+// (works from both the main repo and any worktree depth)
+function findProjectDir() {
+  let dir = __dirname
+  while (dir !== path.dirname(dir)) {
+    if (fs.existsSync(path.join(dir, 'test_project'))) return dir
+    dir = path.dirname(dir)
+  }
+  throw new Error('Could not find project directory containing test_project/')
+}
+const CWD = path.join(findProjectDir(), 'test_project', 'vue_examples')
 
 function render(jobs) {
   const result = spawnSync('node', [RENDERER], {
@@ -144,6 +154,26 @@ import Child from '${childFile}'
     fs.rmSync(childDir, { recursive: true })
     fs.rmSync(parentDir, { recursive: true })
   }
+})
+
+test('renders with explicit nodeModulesDir field in job', () => {
+  const nodeModulesDir = path.join(process.cwd(), 'node_modules')
+  const jobs = [{
+    id: 0,
+    componentFile: path.join(process.cwd(), 'components', 'InfoCard.vue'),
+    props: {},
+    slotHtml: '',
+    nodeModulesDir
+  }]
+  const result = spawnSync('node', [RENDERER], {
+    input: JSON.stringify(jobs),
+    cwd: process.cwd(),
+    encoding: 'utf-8'
+  })
+  assert.strictEqual(result.status, 0, `stderr: ${result.stderr}`)
+  const results = JSON.parse(result.stdout)
+  assert.strictEqual(results[0].id, 0)
+  assert.ok(results[0].html.length > 0, 'Expected non-empty HTML')
 })
 
 if (failed > 0) {

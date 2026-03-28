@@ -92,6 +92,41 @@ module Sakusei
       exit 1
     end
 
+    desc 'components [STYLE]', 'List available Vue components'
+    option :directory, aliases: '-d', default: '.', desc: 'Directory to search for style packs'
+    def components(style = nil)
+      pack = StylePack.discover(options[:directory], style)
+
+      say "\nAvailable Vue components:\n\n"
+
+      pack_components = pack.list_components
+      if pack_components.any?
+        say "  Style pack: #{pack.name}", :cyan
+        pack_components.each do |comp|
+          desc_str = comp[:description] || '(no description)'
+          say "  • #{comp[:name].ljust(18)} #{desc_str}"
+        end
+      else
+        say "  Style pack '#{pack.name}' has no Vue components.", :yellow
+      end
+
+      if style.nil?
+        local_components_dir = File.join(Dir.pwd, 'components')
+        if Dir.exist?(local_components_dir)
+          say ""
+          say "  Local (./components/)", :cyan
+          Dir.glob(File.join(local_components_dir, '*.vue')).sort.each do |file|
+            name = File.basename(file, '.vue')
+            desc_str = StylePack.extract_docs_description(file) || '(no description)'
+            say "  • #{name.ljust(18)} #{desc_str}"
+          end
+        end
+      end
+    rescue Error => e
+      say_error e.message
+      exit 1
+    end
+
     desc 'version', 'Show version'
     def version
       say "Sakusei #{Sakusei::VERSION}"
