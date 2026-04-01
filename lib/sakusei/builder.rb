@@ -4,6 +4,7 @@ require_relative 'style_pack'
 require_relative 'file_resolver'
 require_relative 'erb_processor'
 require_relative 'vue_processor'
+require_relative 'heading_wrapper'
 require_relative 'md_to_pdf_converter'
 
 module Sakusei
@@ -31,6 +32,9 @@ module Sakusei
       # 4. Process Vue components (if available)
       processed_content = process_vue(processed_content, style_pack)
 
+      # 4.5 Wrap h2/h3 headings with their following block to prevent orphaned headings
+      processed_content = wrap_headings(processed_content)
+
       # 5. Convert to PDF
       $stderr.puts "[sakusei] converting to PDF..."
       output_path = generate_output_path
@@ -56,6 +60,10 @@ module Sakusei
 
     def process_vue(content, style_pack)
       VueProcessor.new(content, @source_dir, style_pack: style_pack).process
+    end
+
+    def wrap_headings(content)
+      HeadingWrapper.new(content).wrap
     end
 
     def convert_to_pdf(content, output_path, style_pack)
