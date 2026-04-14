@@ -83,10 +83,21 @@ module Sakusei
       else
         say 'Available style packs:', :green
         style_packs.each do |pack|
-          say "  • #{pack[:name]}"
+          label = pack[:default] ? " (default)" : ''
+          say "  • #{pack[:name]}#{label}"
           say "    Path: #{pack[:path]}", :cyan
         end
       end
+    rescue Error => e
+      say_error e.message
+      exit 1
+    end
+
+    desc 'set-style NAME', 'Set the default style pack'
+    option :directory, aliases: '-d', default: '.', desc: 'Directory to search for .sakusei'
+    def set_style(name)
+      StylePack.set_default(options[:directory], name)
+      say "Default style pack set to '#{name}'", :green
     rescue Error => e
       say_error e.message
       exit 1

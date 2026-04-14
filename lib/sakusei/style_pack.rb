@@ -1,11 +1,13 @@
 # frozen_string_literal: true
 
 require 'set'
+require 'yaml'
 
 module Sakusei
   class StylePack
     STYLE_PACKS_DIR = 'style_packs'
     SAKUSEI_DIR = '.sakusei'
+    SAKUSEI_CONFIG = 'config.yml'
 
     attr_reader :name, :path, :config, :stylesheet, :header, :footer
 
@@ -25,13 +27,32 @@ module Sakusei
       sakusei_path = find_sakusei_dir(start_dir)
 
       if sakusei_path
-        packs_dir = File.join(sakusei_path, STYLE_PACKS_DIR)
-        return load_from_path(packs_dir, requested_name) if Dir.exist?(packs_dir)
+        # Fall back to config default when no explicit name is given
+        resolved_name = requested_name || read_config(sakusei_path)['default_style']
+
+        # 'default' means the built-in pack — skip to fallback below
+        unless resolved_name == 'default'
+          packs_dir = File.join(sakusei_path, STYLE_PACKS_DIR)
+          return load_from_path(packs_dir, resolved_name) if Dir.exist?(packs_dir)
+        end
       end
 
       # Fall back to default style pack
       default_path = File.expand_path('../templates/default_style_pack', __dir__)
       new(default_path, 'default')
+    end
+
+    # Set the default style pack in the nearest .sakusei/config.yml
+    def self.set_default(start_dir, style_name)
+      sakusei_path = find_sakusei_dir(start_dir)
+      raise Error, "No .sakusei directory found. Run 'sakusei init' to create a style pack first." unless sakusei_path
+
+      available = list_available(start_dir)
+      unless available.any? { |p| p[:name] == style_name }
+        raise Error, "Style pack '#{style_name}' not found. Run 'sakusei styles' to see available packs."
+      end
+
+      write_config(sakusei_path, 'default_style' => style_name)
     end
 
     # Initialize a new style pack
@@ -204,6 +225,7 @@ module Sakusei
     # List all available style packs
     def self.list_available(start_dir = '.')
       packs = []
+      nearest_sakusei_path = nil
 
       # Find all .sakusei directories walking up from start_dir
       current = File.expand_path(start_dir)
@@ -212,6 +234,7 @@ module Sakusei
       loop do
         sakusei_path = File.join(current, SAKUSEI_DIR)
         if Dir.exist?(sakusei_path) && !visited_dirs.include?(sakusei_path)
+          nearest_sakusei_path ||= sakusei_path
           visited_dirs.add(sakusei_path)
           packs_dir = File.join(sakusei_path, STYLE_PACKS_DIR)
           if Dir.exist?(packs_dir)
@@ -233,10 +256,28 @@ module Sakusei
 
       # Remove duplicates by name (closer packs take precedence)
       seen_names = Set.new
-      packs.select { |p| seen_names.add?(p[:name]) }
+      unique_packs = packs.select { |p| seen_names.add?(p[:name]) }
+
+      # Mark whichever pack is set as default in config
+      default_name = nearest_sakusei_path ? read_config(nearest_sakusei_path)['default_style'] : nil
+      unique_packs.map { |p| p.merge(default: p[:name] == default_name) }
     end
 
     private
+
+    def self.read_config(sakusei_dir)
+      config_path = File.join(sakusei_dir, SAKUSEI_CONFIG)
+      return {} unless File.exist?(config_path)
+      YAML.safe_load(File.read(config_path)) || {}
+    rescue Psych::Exception
+      {}
+    end
+
+    def self.write_config(sakusei_dir, data)
+      config_path = File.join(sakusei_dir, SAKUSEI_CONFIG)
+      existing = read_config(sakusei_dir)
+      File.write(config_path, YAML.dump(existing.merge(data)))
+    end
 
     def self.find_sakusei_dir(start_dir)
       current = File.expand_path(start_dir)
