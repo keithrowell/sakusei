@@ -274,5 +274,42 @@ module Sakusei
       assert local[:default],  'local_pack should be default per nearest config'
       refute shared[:default], 'shared_pack from parent should not be marked default'
     end
+
+    # ── explicit --style finds pack across full tree ─────────────────────────
+
+    def test_discover_explicit_name_finds_pack_in_parent_when_child_sakusei_has_no_packs
+      # Regression: nearest .sakusei has only config.yml (no style_packs/),
+      # but the requested pack lives in a parent .sakusei/style_packs/.
+      # Previously discover() stopped at the nearest .sakusei, found no packs_dir,
+      # and silently fell back to the built-in default.
+      parent_dir = @temp_dir
+      make_pack(parent_dir, 'legal')
+
+      # Child has a .sakusei with only a config — no style_packs/
+      child_dir = File.join(parent_dir, 'projects', 'my-client')
+      FileUtils.mkdir_p(child_dir)
+      FileUtils.mkdir_p(File.join(child_dir, '.sakusei'))
+
+      pack = StylePack.discover(child_dir, 'legal')
+      assert_equal 'legal', pack.name, '--style legal should find pack in parent .sakusei even when nearest .sakusei has no style_packs/'
+    end
+
+    def test_discover_explicit_name_finds_pack_in_same_sakusei
+      make_pack(@temp_dir, 'legal', 'corporate')
+
+      pack = StylePack.discover(@temp_dir, 'legal')
+      assert_equal 'legal', pack.name
+    end
+
+    def test_discover_explicit_name_raises_when_pack_not_found_anywhere
+      make_pack(@temp_dir, 'corporate')
+
+      assert_raises(Error) { StylePack.discover(@temp_dir, 'nonexistent') }
+    end
+
+    def test_discover_explicit_name_does_not_silently_fall_back_to_builtin_default
+      # No packs at all — explicit name should raise, not silently return built-in
+      assert_raises(Error) { StylePack.discover(@temp_dir, 'legal') }
+    end
   end
 end

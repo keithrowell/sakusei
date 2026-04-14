@@ -26,18 +26,29 @@ module Sakusei
     def self.discover(start_dir, requested_name = nil)
       sakusei_path = find_sakusei_dir(start_dir)
 
-      if sakusei_path
-        # Fall back to config default when no explicit name is given
-        resolved_name = requested_name || read_config(sakusei_path)['default_style']
+      # Resolve name: explicit arg takes priority, then config default
+      resolved_name = requested_name
+      resolved_name ||= read_config(sakusei_path)['default_style'] if sakusei_path
 
-        # 'default' means the built-in pack — skip to fallback below
+      if resolved_name
+        # Built-in 'default' pack requested explicitly — skip to fallback below
         unless resolved_name == 'default'
+          # Search across ALL .sakusei dirs in the tree (not just the nearest),
+          # so a named pack in a parent dir is found even if a child .sakusei
+          # directory exists but has no style_packs/ subdirectory.
+          pack_entry = list_available(start_dir).find { |p| p[:name] == resolved_name }
+          raise Error, "Style pack '#{resolved_name}' not found. Run 'sakusei styles' to see available packs." unless pack_entry
+          return new(pack_entry[:path], pack_entry[:name])
+        end
+      else
+        # No name at all: use the first pack from the nearest .sakusei
+        if sakusei_path
           packs_dir = File.join(sakusei_path, STYLE_PACKS_DIR)
-          return load_from_path(packs_dir, resolved_name) if Dir.exist?(packs_dir)
+          return load_from_path(packs_dir, nil) if Dir.exist?(packs_dir)
         end
       end
 
-      # Fall back to default style pack
+      # Fall back to built-in default style pack
       default_path = File.expand_path('../templates/default_style_pack', __dir__)
       new(default_path, 'default')
     end
