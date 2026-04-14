@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require 'tempfile'
+
 module Sakusei
   # Builds multiple markdown files into a single PDF with consistent page numbering
   class MultiFileBuilder
@@ -18,8 +20,14 @@ module Sakusei
       # Process the combined content through the normal pipeline
       temp_file = create_temp_file(combined_content)
 
-      # Use standard Builder with the combined file
-      Builder.new(temp_file, @options.merge(base_dir: @base_dir)).build
+      # Derive output path from the first source file if not explicitly specified
+      output = @options[:output] || begin
+        first = @files.first
+        File.join(File.dirname(File.expand_path(first)), "#{File.basename(first, '.*')}.pdf")
+      end
+
+      # Use standard Builder with the combined file, pointing it at the real source dir
+      Builder.new(temp_file, @options.merge(source_dir: @base_dir, output: output)).build
     ensure
       File.delete(temp_file) if temp_file && File.exist?(temp_file)
     end

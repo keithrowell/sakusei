@@ -3,6 +3,7 @@
 require_relative 'style_pack'
 require_relative 'file_resolver'
 require_relative 'erb_processor'
+require_relative 'image_path_resolver'
 require_relative 'vue_processor'
 require_relative 'heading_wrapper'
 require_relative 'md_to_pdf_converter'
@@ -47,7 +48,7 @@ module Sakusei
     private
 
     def discover_style_pack
-      StylePack.discover(@source_dir, @options[:style])
+      StylePack.discover(@options[:source_dir] || @source_dir, @options[:style])
     end
 
     def resolve_files
@@ -56,6 +57,10 @@ module Sakusei
 
     def process_erb(content)
       ErbProcessor.new(content, @source_dir, source_file: @source_file).process
+    end
+
+    def resolve_image_paths(content)
+      ImagePathResolver.new(content, @source_dir).resolve
     end
 
     def process_vue(content, style_pack)
@@ -67,7 +72,7 @@ module Sakusei
     end
 
     def convert_to_pdf(content, output_path, style_pack)
-      MdToPdfConverter.new(content, output_path, style_pack, @options).convert
+      MdToPdfConverter.new(content, output_path, style_pack, @options.merge(source_dir: @source_dir)).convert
     end
 
     def generate_output_path

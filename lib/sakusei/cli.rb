@@ -65,7 +65,7 @@ module Sakusei
     def concat(*files)
       raise Error, 'No input files provided' if files.empty?
 
-      PdfConcat.new(files, options[:output]).concat
+      PdfConcatenator.new(files, options[:output]).concat
       say "PDFs concatenated: #{options[:output]}", :green
     rescue Error => e
       say_error e.message
@@ -211,8 +211,8 @@ module Sakusei
 
     # Override dispatch to treat file paths as build commands
     def self.dispatch(meth, given_args, given_opts, config)
-      # If first arg is an existing file or glob pattern, treat it as a build command
-      if given_args.any? && file_arg?(given_args.first)
+      # If first arg is an existing file or glob pattern (and not a known subcommand), treat it as a build command
+      if given_args.any? && !all_commands.key?(given_args.first) && file_arg?(given_args.first)
         given_args.unshift('build')
       end
       super

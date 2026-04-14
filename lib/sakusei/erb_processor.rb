@@ -60,6 +60,16 @@ module Sakusei
         `#{command}`.chomp
       end
 
+      # Resolves a relative image path (relative to the source document) to a
+      # file:// URI that Puppeteer can load during PDF generation.
+      #
+      # Usage in markdown:
+      #   <%= image_path('images/photo.jpg') %>
+      def image_path(relative_path)
+        full_path = File.expand_path(relative_path, @base_dir)
+        "file://#{full_path}"
+      end
+
       # Extracts document headings as a JSON array for use with the Contents component.
       # Only includes headings that appear after the Contents component tag in the file.
       # Normalises heading depth relative to h2: h2 → level 1, h3 → level 2, etc.
