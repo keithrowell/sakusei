@@ -59,5 +59,54 @@ module Sakusei
       assert_includes result, "page-break-inside: avoid"
       assert_includes result, "Other."
     end
+
+    def test_does_not_wrap_headings_inside_code_blocks
+      content = <<~MD
+        ## Real Heading
+
+        Some intro.
+
+        ```markdown
+
+        # Title
+
+        Some Markdown
+
+        ```
+
+        ## Another Real Heading
+
+        Outro paragraph.
+      MD
+
+      result = HeadingWrapper.new(content).wrap
+
+      # Real headings outside code blocks should still be wrapped
+      assert_match(/<div style="page-break-inside: avoid">\n\n## Real Heading\n\nSome intro\.\n\n<\/div>/, result)
+      assert_match(/<div style="page-break-inside: avoid">\n\n## Another Real Heading\n\nOutro paragraph\./m, result)
+
+      # The heading inside the code block must NOT be wrapped
+      assert_includes result, "```markdown\n\n# Title\n\nSome Markdown\n\n```"
+      refute_includes result, "<div style=\"page-break-inside: avoid\">\n\n\n# Title"
+    end
+
+    def test_does_not_wrap_headings_inside_ruby_code_blocks
+      content = <<~MD
+        ```ruby
+        ## This is a comment, not a heading
+
+        foo = 1
+        ```
+
+        ## Actual Heading
+
+        Paragraph.
+      MD
+
+      result = HeadingWrapper.new(content).wrap
+
+      refute_match(/page-break-inside.*## This is a comment/m, result)
+      assert_match(/<div style="page-break-inside: avoid">\n\n## Actual Heading\n\nParagraph\./m, result)
+    end
   end
 end

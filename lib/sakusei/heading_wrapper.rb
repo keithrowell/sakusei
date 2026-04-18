@@ -10,15 +10,65 @@ module Sakusei
   # Raw HTML in the markdown (html: true) passes through md-to-pdf untouched.
   class HeadingWrapper
     HEADING_PATTERN = /\A[ \t]*(##|###) /
+    FENCE_PATTERN = /\A`{3,}/
 
     def initialize(content)
       @content = content
     end
 
     def wrap
+      code_blocks = []
+      text_lines = []
+      in_code = false
+      code_buffer = []
+
+      @content.each_line do |line|
+        if line.match?(FENCE_PATTERN)
+          if in_code
+            # End of code block
+            code_buffer << line
+            code_blocks << code_buffer.join
+            text_lines << "#{placeholder_for(code_blocks.length - 1)}\n\n"
+            code_buffer = []
+            in_code = false
+          else
+            # Start of code block
+            in_code = true
+            code_buffer << line
+          end
+        elsif in_code
+          code_buffer << line
+        else
+          text_lines << line
+        end
+      end
+
+      # Handle unclosed code block
+      if in_code
+        code_blocks << code_buffer.join
+        text_lines << "#{placeholder_for(code_blocks.length - 1)}\n\n"
+      end
+
+      wrapped = wrap_text(text_lines.join)
+
+      # Restore code blocks
+      code_blocks.each_with_index do |block, i|
+        wrapped = wrapped.sub(placeholder_for(i), block)
+      end
+
+      wrapped
+    end
+
+    private
+
+    def placeholder_for(index)
+      "__SAKUSEI_CODE_BLOCK_#{index}__"
+    end
+
+    def wrap_text(content)
       # Split on two-or-more blank lines to get top-level blocks.
       # Preserve the separator length so rejoining is faithful.
-      blocks = @content.split(/(\n{2,})/)
+      blocks = content.split(/(\n{2,})/)
       # split with a capture group gives us [block, sep, block, sep, ...]
       result = []
       i = 0
@@ -46,8 +96,6 @@ module Sakusei
 
       result.join
     end
-
-    private
 
     def heading_block?(block)
       return false unless block
