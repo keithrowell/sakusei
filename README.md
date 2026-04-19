@@ -122,31 +122,48 @@ step is oriented toward the output: a prioritised set of recommendations the bus
 can act on.
 
 <vue-component name="ProcessSteps" steps='[
-  {"title":"Discovery","description":"Structured interviews with leasing coordinators,
-  property managers, and leadership. We map the full lifecycle of a tenancy — from
-  enquiry through to renewal or exit — and identify where time goes and where
-  friction accumulates."},
-  {"title":"Analysis & Opportunity Mapping","description":"We analyse workflows against
-  current AI and automation capabilities, assessing each opportunity for feasibility,
-  integration requirements, and business impact."},
-  {"title":"Roadmap & Report","description":"Prioritised recommendations delivered as a
-  practical implementation roadmap — phased by effort and impact, with clear next steps
-  for each initiative and indicative investment requirements."}
+  {
+    "title": "Discovery",
+    "description": "Structured interviews with leasing coordinators, property managers,
+    and leadership. We map the full lifecycle of a tenancy — from enquiry through to
+    renewal or exit — and identify where time goes and where friction accumulates."
+  },
+  {
+    "title": "Analysis & Opportunity Mapping",
+    "description": "We analyse workflows against current AI and automation capabilities,
+    assessing each opportunity for feasibility, integration requirements, and business
+    impact."
+  },
+  {
+    "title": "Roadmap & Report",
+    "description": "Prioritised recommendations delivered as a practical implementation
+    roadmap — phased by effort and impact, with clear next steps for each initiative and
+    indicative investment requirements."
+  }
 ]' />
 
 
 ## Deliverables
 
 <vue-component name="DeliverableCards" columns="3" items='[
-  {"title":"Workflow Assessment","description":"A clear map of current operations across
-  leasing, tenancy management, and communications — documenting where time is spent and
-  where the significant friction points lie."},
-  {"title":"Automation Opportunity Register","description":"A structured register of
-  identified automation opportunities, each assessed for business impact, implementation
-  effort, and integration requirements with existing systems."},
-  {"title":"Implementation Roadmap","description":"A phased, prioritised action plan with
-  recommended sequencing, indicative timelines, and investment estimates — ready to brief
-  a delivery team or internal stakeholders."}
+  {
+    "title": "Workflow Assessment",
+    "description": "A clear map of current operations across leasing, tenancy management,
+    and communications — documenting where time is spent and where the significant
+    friction points lie."
+  },
+  {
+    "title": "Automation Opportunity Register",
+    "description": "A structured register of identified automation opportunities, each
+    assessed for business impact, implementation effort, and integration requirements
+    with existing systems."
+  },
+  {
+    "title": "Implementation Roadmap",
+    "description": "A phased, prioritised action plan with recommended sequencing,
+    indicative timelines, and investment estimates — ready to brief a delivery team or
+    internal stakeholders."
+  }
 ]' />
 ```
 
