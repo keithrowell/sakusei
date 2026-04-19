@@ -1,5 +1,6 @@
 *.gem
 .DS_Store
 *.pdf
+!examples/*.pdf
 node_modules/
 .worktrees/
