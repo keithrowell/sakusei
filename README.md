@@ -1,14 +1,5 @@
 # Sakusei
 
-**Sakusei** (作成) — from the Japanese words meaning "creation," "making," or "craft."
-
-Like a master artisan refining their craft, Sakusei transforms raw Markdown into beautifully crafted PDF documents. Every document is an act of creation — structured, styled, and brought to life with precision.
-
-The name embodies the philosophy behind this tool: documents aren't just generated, they're _crafted_.
-
-
-## Overview
-
 Sakusei is a build system for creating PDF documents from Markdown source files. It supports:
 
 - **Markdown to PDF conversion** via `md-to-pdf`
@@ -17,16 +8,16 @@ Sakusei is a build system for creating PDF documents from Markdown source files.
 - **File inclusion** for multi-file documents
 - **PDF concatenation** for combining multiple documents
 
+---
+
+**Sakusei** (作成) — from the Japanese words meaning "creation," "making," or "craft."
+
+Like a master artisan refining their craft, Sakusei transforms raw Markdown into beautifully crafted PDF documents. Every document is an act of creation — structured, styled, and brought to life with precision.
+
+The name embodies the philosophy behind this tool: documents aren't just generated, they're _crafted_.
+
 
 ## Installation
-
-### macOS (Homebrew)
-
-```bash
-# Add the tap and install
-brew tap keithrowell/sakusei https://github.com/keithrowell/sakusei/homebrew-tap
-brew install sakusei
-```
 
 ### Ruby Gem
 
