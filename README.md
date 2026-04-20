@@ -253,19 +253,21 @@ Environment: <%= env('RAILS_ENV', 'development') %>
 
 ### Manual Page Breaks
 
-Insert page breaks in your markdown using HTML:
+Insert a page break with the `::break::` shorthand:
 
 ```markdown
 # Chapter 1
 
 Content here...
 
-<div class="page-break"></div>
+::break::
 
 # Chapter 2
 
 More content...
 ```
+
+This expands to `<div class="page-break"></div>` before rendering. You can also use that HTML directly if you prefer.
 
 Available classes:
 - `.page-break` or `.page-break-after` - Break after this element

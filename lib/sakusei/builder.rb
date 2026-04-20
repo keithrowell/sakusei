@@ -30,6 +30,9 @@ module Sakusei
       $stderr.puts "[sakusei] processing ERB..."
       processed_content = process_erb(resolved_content)
 
+      # 3.5. Expand shorthand syntax (e.g. ::break:: → page-break div)
+      processed_content = expand_break_syntax(processed_content)
+
       # 4. Process Vue components (if available)
       processed_content = process_vue(processed_content, style_pack)
 
@@ -65,6 +68,10 @@ module Sakusei
 
     def process_vue(content, style_pack)
       VueProcessor.new(content, @source_dir, style_pack: style_pack).process
+    end
+
+    def expand_break_syntax(content)
+      content.gsub(/::break::/, '<div class="page-break"></div>')
     end
 
     def wrap_headings(content)
