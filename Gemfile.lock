@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    sakusei (0.5.8)
+    sakusei (0.5.9)
       erb (~> 4.0)
       listen (~> 3.8)
       thor (~> 1.2)

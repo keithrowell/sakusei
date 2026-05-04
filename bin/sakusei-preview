@@ -24,9 +24,9 @@ if args.empty?
   exit 1
 end
 
-source_file = args.first
+source_file = Sakusei.resolve_file_extension(args.first)
 unless File.exist?(source_file)
-  warn "File not found: #{source_file}"
+  warn "File not found: #{args.first}"
   exit 1
 end
 

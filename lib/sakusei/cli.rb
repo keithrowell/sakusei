@@ -242,26 +242,14 @@ module Sakusei
       return false if arg.nil? || arg.empty?
       return false if File.extname(arg).length > 0  # Already has an extension
 
-      %w[.md .text .markdown].any? { |ext| File.exist?(arg + ext) }
+      Sakusei::MARKDOWN_EXTENSIONS.any? { |ext| File.exist?(arg + ext) }
     end
 
     private
 
     # Resolve file by trying markdown extensions if no extension provided
     def resolve_file_extension(file)
-      return file if File.exist?(file)
-      return file if File.directory?(file)
-      return file if file.include?('*')  # Glob pattern
-      return file if File.extname(file).length > 0  # Already has extension
-
-      # Try markdown extensions
-      %w[.md .text .markdown].each do |ext|
-        path_with_ext = file + ext
-        return path_with_ext if File.exist?(path_with_ext)
-      end
-
-      # Return original if no extension found
-      file
+      Sakusei.resolve_file_extension(file)
     end
 
     def open_pdf(path)
