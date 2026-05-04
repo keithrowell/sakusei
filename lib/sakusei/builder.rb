@@ -7,6 +7,7 @@ require_relative 'image_path_resolver'
 require_relative 'vue_processor'
 require_relative 'heading_wrapper'
 require_relative 'md_to_pdf_converter'
+require_relative 'html_converter'
 
 module Sakusei
   class Builder
@@ -14,48 +15,64 @@ module Sakusei
       @source_file = File.expand_path(source_file)
       @options = options
       @source_dir = File.dirname(@source_file)
+      @file_resolver = nil
+    end
+
+    attr_reader :source_file, :source_dir
+
+    # Files that contributed to the most recent build (source + @include partials).
+    # Populated after #build, #build_html, or #build_processed_content runs.
+    def resolved_input_files
+      files = [@source_file]
+      files.concat(@file_resolver.resolved_files.to_a) if @file_resolver
+      files.uniq
     end
 
     def build
-      # 1. Discover and load style pack
-      $stderr.puts "[sakusei] discovering style pack..."
-      style_pack = discover_style_pack
-      $stderr.puts "[sakusei] style pack: #{style_pack.name} (#{style_pack.path})"
-
-      # 2. Resolve and concatenate file references
-      $stderr.puts "[sakusei] resolving file includes..."
-      resolved_content = resolve_files
-
-      # 3. Process ERB templates
-      $stderr.puts "[sakusei] processing ERB..."
-      processed_content = process_erb(resolved_content)
-
-      # 3.5. Expand shorthand syntax (e.g. ::break:: → page-break div)
-      processed_content = expand_break_syntax(processed_content)
-
-      # 4. Process Vue components (if available)
-      processed_content = process_vue(processed_content, style_pack)
-
-      # 4.5 Wrap h2/h3 headings with their following block to prevent orphaned headings
-      processed_content = wrap_headings(processed_content)
-
-      # 5. Convert to PDF
+      style_pack, processed_content = build_processed_content
       $stderr.puts "[sakusei] converting to PDF..."
       output_path = generate_output_path
       convert_to_pdf(processed_content, output_path, style_pack)
-
       $stderr.puts "[sakusei] written: #{output_path}"
       output_path
     end
 
+    # Run the full pipeline up to (but not including) PDF conversion, then
+    # render the processed markdown to a styled HTML string via md-to-pdf --as-html.
+    # Returns [html_string, style_pack].
+    def build_html
+      style_pack, processed_content = build_processed_content
+      html = HtmlConverter.new(processed_content, style_pack, @options.merge(source_dir: @source_dir)).convert
+      [html, style_pack]
+    end
+
     private
+
+    def build_processed_content
+      $stderr.puts "[sakusei] discovering style pack..."
+      style_pack = discover_style_pack
+      $stderr.puts "[sakusei] style pack: #{style_pack.name} (#{style_pack.path})"
+
+      $stderr.puts "[sakusei] resolving file includes..."
+      resolved_content = resolve_files
+
+      $stderr.puts "[sakusei] processing ERB..."
+      processed_content = process_erb(resolved_content)
+
+      processed_content = expand_break_syntax(processed_content)
+      processed_content = process_vue(processed_content, style_pack)
+      processed_content = wrap_headings(processed_content)
+
+      [style_pack, processed_content]
+    end
 
     def discover_style_pack
       StylePack.discover(@options[:source_dir] || @source_dir, @options[:style])
     end
 
     def resolve_files
-      FileResolver.new(@source_file).resolve
+      @file_resolver = FileResolver.new(@source_file)
+      @file_resolver.resolve
     end
 
     def process_erb(content)

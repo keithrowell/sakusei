@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require 'optparse'
+require 'sakusei'
+require 'sakusei/preview_server'
+
+options = { open: true, paged: true }
+parser = OptionParser.new do |opts|
+  opts.banner = 'Usage: sakusei-preview FILE [options]'
+
+  opts.on('-p', '--port PORT', Integer, "Port to bind (default #{Sakusei::PreviewServer::DEFAULT_PORT})") { |v| options[:port] = v }
+  opts.on('-s', '--style PACK', 'Style pack name to use') { |v| options[:style] = v }
+  opts.on('-c', '--config FILE', 'Path to md-to-pdf config file') { |v| options[:config] = v }
+  opts.on('--stylesheet FILE', 'Path to CSS stylesheet') { |v| options[:stylesheet] = v }
+  opts.on('--no-open', 'Do not open the browser automatically') { options[:open] = false }
+  opts.on('--no-paged', 'Disable paged.js pagination (show as scrolling HTML)') { options[:paged] = false }
+  opts.on('-h', '--help', 'Show this help') { puts opts; exit 0 }
+end
+
+args = parser.parse(ARGV)
+if args.empty?
+  warn parser
+  exit 1
+end
+
+source_file = args.first
+unless File.exist?(source_file)
+  warn "File not found: #{source_file}"
+  exit 1
+end
+
+begin
+  Sakusei::PreviewServer.new(source_file, options).run
+rescue Interrupt
+  exit 0
+rescue Sakusei::Error => e
+  warn "[sakusei-preview] #{e.message}"
+  exit 1
+end

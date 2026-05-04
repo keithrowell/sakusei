@@ -28,9 +28,20 @@ Build a PDF from one of the examples:
 bundle exec sakusei build examples/getting-started.md
 ```
 
+Live-preview a markdown file in the browser:
+
+```bash
+bundle exec sakusei-preview examples/getting-started.md
+```
+
 ## Architecture
 
-Sakusei is a Ruby gem with a CLI (`bin/sakusei`, built on Thor) that converts Markdown to PDF through a multi-stage pipeline.
+Sakusei ships two CLIs:
+
+- `bin/sakusei` (Thor) — the build CLI that produces PDFs.
+- `bin/sakusei-preview` — a separate live-render binary backed by `Sakusei::PreviewServer`. Watches the source file, its `@include` partials, the active style pack, and referenced images; re-renders to HTML on change via `npx md-to-pdf --as-html` and reloads the browser tab. Loads paged.js from a CDN so `@page`/`page-break-*` rules are visible as document pages. Use this for fast iteration; use `sakusei build` for the final PDF.
+
+Both CLIs share the multi-stage build pipeline.
 
 ### Build pipeline
 
@@ -42,7 +53,9 @@ Sakusei is a Ruby gem with a CLI (`bin/sakusei`, built on Thor) that converts Ma
 4. **expand_break_syntax** — expands `::break::` shorthand to `<div class="page-break"></div>`.
 5. **VueProcessor** — finds `<vue-component name="Foo" prop="value" />` tags, renders them server-side via `lib/sakusei/vue_renderer.js` using Node.js + `@vue/server-renderer` in a single batched call.
 6. **HeadingWrapper** — wraps h2/h3 headings with their immediately following content block in keep-together divs to prevent orphaned headings.
-7. **MdToPdfConverter** — assembles the `npx md-to-pdf` command with config, stylesheets, and header/footer from the style pack, runs it in a temp dir.
+7. **MdToPdfConverter** / **HtmlConverter** — both extend `ConverterBase` (`lib/sakusei/converter_base.rb`) and assemble the `npx md-to-pdf` command with config, stylesheets, and header/footer from the style pack. `MdToPdfConverter` runs it in a temp dir and returns the PDF path; `HtmlConverter` adds `--as-html` and returns the HTML string (used by the live preview server).
+
+`Builder#build_html` runs stages 1–6 and ends in `HtmlConverter`, sharing the pipeline with `Builder#build` so the preview matches the final PDF.
 
 `MultiFileBuilder` handles glob patterns and multiple source files, delegating to `Builder` per file and concatenating results.
 

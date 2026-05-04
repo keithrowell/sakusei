@@ -5,6 +5,8 @@ module Sakusei
   class FileResolver
     INCLUDE_PATTERN = /<!--\s*@include\s+(\S+)\s*-->/
 
+    attr_reader :resolved_files
+
     def initialize(source_file)
       @source_file = source_file
       @source_dir = File.dirname(source_file)

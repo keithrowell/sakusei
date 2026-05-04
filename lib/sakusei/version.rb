@@ -1,5 +1,5 @@
 # frozen_string_literal: true
 
 module Sakusei
-  VERSION = '0.4.0'
+  VERSION = '0.5.8'
 end

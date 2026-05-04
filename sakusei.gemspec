@@ -17,12 +17,14 @@ Gem::Specification.new do |spec|
     `git ls-files -z`.split("\x0").reject { |f| f.match(%r{\A(?:test|spec|features)/}) }
   end
   spec.bindir        = 'bin'
-  spec.executables   = ['sakusei']
+  spec.executables   = %w[sakusei sakusei-preview]
   spec.require_paths = ['lib']
 
   # Dependencies
   spec.add_dependency 'thor', '~> 1.2'
   spec.add_dependency 'erb', '~> 4.0'
+  spec.add_dependency 'listen', '~> 3.8'
+  spec.add_dependency 'webrick', '~> 1.8'
 
   spec.add_development_dependency 'minitest', '~> 5.0'
   spec.add_development_dependency 'rubocop', '~> 1.0'

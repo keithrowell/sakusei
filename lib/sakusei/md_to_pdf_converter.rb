@@ -2,16 +2,14 @@
 
 require 'fileutils'
 require 'tmpdir'
+require_relative 'converter_base'
 
 module Sakusei
   # Converts markdown content to PDF using md-to-pdf
-  class MdToPdfConverter
+  class MdToPdfConverter < ConverterBase
     def initialize(content, output_path, style_pack, options = {})
-      @content    = content
+      super(content, style_pack, options)
       @output_path = output_path
-      @style_pack = style_pack
-      @options    = options
-      @source_dir = options[:source_dir]
     end
 
     def convert
@@ -24,7 +22,7 @@ module Sakusei
         # so md-to-pdf's HTTP server can serve them by their relative paths.
         copy_images(temp_dir)
 
-        cmd = build_command(temp_md, temp_dir)
+        cmd = build_command(temp_md, temp_dir).join(' ')
         result = system(cmd)
         raise Error, 'PDF conversion failed' unless result
 
@@ -32,66 +30,6 @@ module Sakusei
       end
 
       @output_path
-    end
-
-    private
-
-    # Scans content for relative image paths (markdown and HTML img src),
-    # and copies each referenced file into temp_dir at the same relative path.
-    def copy_images(temp_dir)
-      return unless @source_dir
-
-      image_paths.each do |rel_path|
-        src = File.expand_path(rel_path, @source_dir)
-        next unless File.exist?(src)
-
-        dest = File.join(temp_dir, rel_path)
-        FileUtils.mkdir_p(File.dirname(dest))
-        FileUtils.cp(src, dest)
-      end
-    end
-
-    # Extracts relative image paths from both markdown syntax and HTML img tags.
-    def image_paths
-      paths = []
-
-      # Markdown: ![alt](path)
-      @content.scan(/!\[[^\]]*\]\(([^)]+)\)/) { |m| paths << m[0].strip }
-
-      # HTML: src="path" (covers Vue-rendered img tags)
-      @content.scan(/src="([^"]+)"/) { |m| paths << m[0].strip }
-
-      # Filter to relative paths only (skip http, https, data URIs, absolute paths)
-      paths.reject { |p| p.match?(/\A(https?:|data:|\/\/)/) || p.start_with?('/') }
-           .uniq
-    end
-
-    def page_chrome_prefix
-      return '' unless @style_pack
-      %i[header footer].map do |part|
-        path = @style_pack.public_send(part)
-        path ? File.read(path) + "\n" : ''
-      end.join
-    end
-
-    def build_command(temp_path, temp_dir)
-      cmd = ['npx', 'md-to-pdf']
-
-      config = @options[:config] || @style_pack.config
-      cmd << '--config-file' << config if config
-
-      stylesheets = [StylePack.base_stylesheet]
-      pack_stylesheet = @options[:stylesheet] || @style_pack.stylesheet
-      stylesheets << pack_stylesheet if pack_stylesheet
-      stylesheets.each { |s| cmd << '--stylesheet' << s }
-
-      # Set basedir to temp_dir so relativePath resolves to /input.md,
-      # making image src="images/foo.jpg" resolve to http://localhost:PORT/images/foo.jpg
-      # which is served from temp_dir where we've copied the assets.
-      cmd << '--basedir' << temp_dir
-
-      cmd << temp_path
-      cmd.join(' ')
     end
   end
 end

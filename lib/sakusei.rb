@@ -15,6 +15,8 @@ require_relative 'sakusei/pdf_concat'
 require_relative 'sakusei/multi_file_builder'
 require_relative 'sakusei/style_preview'
 require_relative 'sakusei/vue_processor'
+require_relative 'sakusei/html_converter'
+require_relative 'sakusei/page_chrome_translator'
 
 module Sakusei
   class Error < StandardError; end
