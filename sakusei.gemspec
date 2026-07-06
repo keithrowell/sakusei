@@ -14,7 +14,14 @@ Gem::Specification.new do |spec|
   spec.required_ruby_version = '>= 3.0.0'
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
-    `git ls-files -z`.split("\x0").reject { |f| f.match(%r{\A(?:test|spec|features)/}) }
+    if File.directory?('.git') && system('git --version', out: File::NULL, err: File::NULL)
+      `git ls-files -z`.split("\x0").reject { |f| f.match(%r{\A(?:test|spec|features)/}) }
+    else
+      # No git (e.g. vendored via `git archive` inside a Docker image) —
+      # glob the shipped tree instead.
+      Dir.glob('{lib,bin,examples}/**/*', File::FNM_DOTMATCH).select { |f| File.file?(f) } +
+        Dir.glob('*').select { |f| File.file?(f) }
+    end
   end
   spec.bindir        = 'bin'
   spec.executables   = %w[sakusei sakusei-preview]
