@@ -24,6 +24,7 @@ module Sakusei
     option :stylesheet, aliases: '-css', desc: 'Path to CSS stylesheet'
     option :page_breaks, aliases: '-p', type: :boolean, default: false, desc: 'Add page breaks between files'
     option :open, type: :boolean, default: false, desc: 'Open the PDF after building'
+    option :sandboxed, type: :boolean, default: false, desc: 'Treat input as inert markdown: no ERB, no @include, images restricted to the source directory'
     def build(*files)
       raise Error, 'No input files provided' if files.empty?
 

@@ -18,12 +18,19 @@ module Sakusei
 
       image_paths.each do |rel_path|
         src = File.expand_path(rel_path, @source_dir)
+        # Sandboxed builds must not read files outside the source directory
+        # (image_paths already excludes absolute paths; this blocks ../ escapes).
+        next if sandboxed? && !src.start_with?(File.expand_path(@source_dir) + File::SEPARATOR)
         next unless File.exist?(src)
 
         dest = File.join(temp_dir, rel_path)
         FileUtils.mkdir_p(File.dirname(dest))
         FileUtils.cp(src, dest)
       end
+    end
+
+    def sandboxed?
+      !!@options[:sandboxed]
     end
 
     def image_paths

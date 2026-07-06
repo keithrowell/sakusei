@@ -60,11 +60,12 @@ module Sakusei
       parts = []
 
       @files.each do |file|
-        content = File.read(file)
-
-        # Resolve includes within each file
-        resolver = FileResolver.new(file)
-        resolved = resolver.resolve
+        resolved = if @options[:sandboxed]
+                     File.read(file)
+                   else
+                     # Resolve includes within each file
+                     FileResolver.new(file).resolve
+                   end
 
         parts << resolved
 

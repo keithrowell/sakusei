@@ -53,17 +53,26 @@ module Sakusei
       style_pack = discover_style_pack
       $stderr.puts "[sakusei] style pack: #{style_pack.name} (#{style_pack.path})"
 
-      $stderr.puts "[sakusei] resolving file includes..."
-      resolved_content = resolve_files
+      if sandboxed?
+        $stderr.puts "[sakusei] sandboxed: skipping file includes and ERB"
+        processed_content = File.read(@source_file)
+      else
+        $stderr.puts "[sakusei] resolving file includes..."
+        resolved_content = resolve_files
 
-      $stderr.puts "[sakusei] processing ERB..."
-      processed_content = process_erb(resolved_content)
+        $stderr.puts "[sakusei] processing ERB..."
+        processed_content = process_erb(resolved_content)
+      end
 
       processed_content = expand_break_syntax(processed_content)
       processed_content = process_vue(processed_content, style_pack)
       processed_content = wrap_headings(processed_content)
 
       [style_pack, processed_content]
+    end
+
+    def sandboxed?
+      !!@options[:sandboxed]
     end
 
     def discover_style_pack
