@@ -164,7 +164,7 @@ module Sakusei
     end
 
     def vue_renderer_script
-      File.expand_path('../vue_renderer.js', __FILE__)
+      File.expand_path('../vue_renderer.cjs', __FILE__)
     end
 
     def parse_attributes(attrs_string)
