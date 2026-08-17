@@ -32,6 +32,9 @@ Gem::Specification.new do |spec|
   spec.add_dependency 'erb', '~> 4.0'
   spec.add_dependency 'listen', '~> 3.8'
   spec.add_dependency 'webrick', '~> 1.8'
+  # Demoted from a default to a bundled gem in Ruby 3.4, so it is no longer on
+  # the load path for free — image_path_resolver.rb requires it.
+  spec.add_dependency 'base64', '~> 0.2'
 
   spec.add_development_dependency 'minitest', '~> 5.0'
   spec.add_development_dependency 'rubocop', '~> 1.0'
